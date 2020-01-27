@@ -1,0 +1,6 @@
+{
+    "headless": true,
+    "output": "html",
+    "reportListPath": "./report_list",
+    "outputPath": "./reports/%DD%.%M%"
+}
