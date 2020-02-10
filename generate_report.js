@@ -33,8 +33,8 @@ function launchChromeAndRunLighthouse(url, opts, config = null) {
 function runLighthouse(url, opts, config, chrome) {
   return lighthouse(url, opts, config).then(results => {
     return chrome
-      ? chrome.kill().then(() => results.report)
-      : new Promise(resolve => resolve(results.report));
+      ? chrome.kill().then(() => results)
+      : new Promise(resolve => resolve(results));
   });
 }
 
@@ -46,15 +46,18 @@ const d = new Date();
 
 //self invoke this async function
 (async () => {
+  const dirPath = config.outputPath
+    .replace("%DD%", d.getDate())
+    .replace("%M%", d.getMonth() + 1);
+  const mainDir = config.outputPath.replace("/%DD%.%M%", "");
+
+  let generalResults = {};
   await asyncForEach(reportList, async l => {
     const [k, v] = Object.entries(l)[0];
     console.log(`Auditing ${k} page: ${v}`);
-    const results = await launchChromeAndRunLighthouse(v, opts);
+    const { reports, lhr } = await launchChromeAndRunLighthouse(v, opts);
+    generalResults[k] = lhr.categories.performance.score;
 
-    const dirPath = config.outputPath
-      .replace("%DD%", d.getDate())
-      .replace("%M%", d.getMonth() + 1);
-    const mainDir = config.outputPath.replace("/%DD%.%M%", "");
     if (!fs.existsSync(mainDir)) {
       fs.mkdirSync(mainDir);
     }
@@ -62,9 +65,15 @@ const d = new Date();
       fs.mkdirSync(dirPath);
     }
     const filePath = `${dirPath}/${k}.${config.output}`;
-    printer.write(results, config.output, filePath).then(() => {
+    printer.write(reports, config.output, filePath).then(() => {
       console.log(`The ${k} page report generated and saved as ${filePath}!`);
     });
   });
-  console.log("All reports generated.");
+  const csvString = "Page, Score \n" +Object.entries(generalResults).map(el=>el.join(",")).join("\n");
+  fs.writeFile(`${dirPath}/_general.csv`, csvString, function(err) {
+    if (err) {
+      return console.log(err);
+    }
+    console.log("All reports generated.");
+  });
 })();
