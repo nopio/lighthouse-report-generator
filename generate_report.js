@@ -61,8 +61,8 @@ const d = new Date();
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath);
     }
-    const filePath = `${dirPath}/${k}.html`;
-    printer.write(results, "html", filePath).then(() => {
+    const filePath = `${dirPath}/${k}.${config.output}`;
+    printer.write(results, config.output, filePath).then(() => {
       console.log(`The ${k} page report generated and saved as ${filePath}!`);
     });
   });
