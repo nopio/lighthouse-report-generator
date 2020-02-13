@@ -46,16 +46,17 @@ const d = new Date();
 
 //self invoke this async function
 (async () => {
+  const m = d.getMonth() + 1;
   const dirPath = config.outputPath
     .replace("%DD%", d.getDate())
-    .replace("%M%", d.getMonth() + 1);
+    .replace("%M%", m > 9 ? m : `0${m}`);
   const mainDir = config.outputPath.replace("/%DD%.%M%", "");
 
   let generalResults = {};
   await asyncForEach(reportList, async l => {
     const [k, v] = Object.entries(l)[0];
     console.log(`Auditing ${k} page: ${v}`);
-    const { reports, lhr } = await launchChromeAndRunLighthouse(v, opts);
+    const { report, lhr } = await launchChromeAndRunLighthouse(v, opts);
     generalResults[k] = lhr.categories.performance.score;
 
     if (!fs.existsSync(mainDir)) {
@@ -65,11 +66,15 @@ const d = new Date();
       fs.mkdirSync(dirPath);
     }
     const filePath = `${dirPath}/${k}.${config.output}`;
-    printer.write(reports, config.output, filePath).then(() => {
+    printer.write(report, config.output, filePath).then(() => {
       console.log(`The ${k} page report generated and saved as ${filePath}!`);
     });
   });
-  const csvString = "Page, Score \n" +Object.entries(generalResults).map(el=>el.join(",")).join("\n");
+  const csvString =
+    "Page, Score \n" +
+    Object.entries(generalResults)
+      .map(([k, v]) => [Object.values(reportList.filter(el=>Object.keys(el)[0] == k)[0])[0], v].join(","))
+      .join("\n");
   fs.writeFile(`${dirPath}/_general.csv`, csvString, function(err) {
     if (err) {
       return console.log(err);
